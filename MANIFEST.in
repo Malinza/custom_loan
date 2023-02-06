@@ -1,0 +1,18 @@
+include MANIFEST.in
+include requirements.txt
+include *.json
+include *.md
+include *.py
+include *.txt
+recursive-include custom_loan *.css
+recursive-include custom_loan *.csv
+recursive-include custom_loan *.html
+recursive-include custom_loan *.ico
+recursive-include custom_loan *.js
+recursive-include custom_loan *.json
+recursive-include custom_loan *.md
+recursive-include custom_loan *.png
+recursive-include custom_loan *.py
+recursive-include custom_loan *.svg
+recursive-include custom_loan *.txt
+recursive-exclude custom_loan *.pyc
