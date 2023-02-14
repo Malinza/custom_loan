@@ -217,23 +217,27 @@ class CustomLoanRepayment(Document):
 			payment_counter += 1
 
 		to_remove = []
+		to_add = []
 		for d in custom_loan.repayment_schedule:
 			if d.is_paid == 0 or d.payment_date == first_day_of_month:
 				to_remove.append(d)
+			if d.is_paid == 1 and d.payment_date != first_day_of_month:
+				to_add.append(d)
 
 		for d in to_remove:
 			custom_loan.remove(d)
+		custom_loan.repayment_schedule = []
+		loan_amounts = custom_loan.loan_amount
+		for d in to_add:
+			loan_amounts -= d.total_payment
+			custom_loan.append("repayment_schedule", {
+				"payment_date": d.payment_date,
+				"principal_amount": d.principal_amount,
+				"total_payment": d.total_payment,
+				"balance_loan_amount": loan_amounts,
+				"is_paid": 1
 
-		# loan_amounts = custom_loan.loan_amount
-		# for d in to_add:
-		# 	loan_amounts -= d.total_payment
-		# 	custom_loan.append("repayment_schedule", {
-		# 		"payment_date": d.payment_date,
-		# 		"principal_amount": d.principal_amount,
-		# 		"total_payment": d.total_payment,
-		# 		"balance_loan_amount": loan_amounts
-
-		# 	})
+			})
 		for i, d in enumerate(custom_loan.repayment_schedule):
 			d.idx = i + 1
 
