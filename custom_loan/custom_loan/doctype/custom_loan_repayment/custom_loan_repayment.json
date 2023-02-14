@@ -1,0 +1,226 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "ACC-REP-.YYYY.-.#####",
+ "creation": "2023-02-11 11:42:58.106586",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "loan",
+  "applicant",
+  "applicant_name",
+  "loan_account",
+  "disbursement_account",
+  "column_break_4",
+  "payment_date",
+  "repayment_type",
+  "amended_from",
+  "applicant_type",
+  "mode_of_payment",
+  "payment_account",
+  "write_off_details_section",
+  "write_off",
+  "column_break_14",
+  "write_off_amount",
+  "repayment_details_section",
+  "repayment_account",
+  "description",
+  "column_break_19",
+  "repayment_amount",
+  "company"
+ ],
+ "fields": [
+  {
+   "fetch_from": "loan.applicant",
+   "fieldname": "applicant",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Applicant"
+  },
+  {
+   "fetch_from": "loan.applicant_name",
+   "fieldname": "applicant_name",
+   "fieldtype": "Data",
+   "label": "Applicant Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Custom Loan Repayment",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fetch_from": "loan.applicant_type",
+   "fieldname": "applicant_type",
+   "fieldtype": "Data",
+   "label": "Applicant Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "loan",
+   "fieldtype": "Link",
+   "label": "Loan",
+   "options": "Custom Loan",
+   "reqd": 1
+  },
+  {
+   "fieldname": "repayment_type",
+   "fieldtype": "Select",
+   "label": "Repayment Type",
+   "options": "\nLoan Write Off\nExternal Sources",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "loan.mode_of_payment",
+   "fieldname": "mode_of_payment",
+   "fieldtype": "Data",
+   "label": "Mode Of Payment",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "loan.loan_account",
+   "fieldname": "loan_account",
+   "fieldtype": "Data",
+   "label": "Loan Account",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "loan.disbursement_account",
+   "fieldname": "disbursement_account",
+   "fieldtype": "Data",
+   "label": "Disbursement Account",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "loan.payment_account",
+   "fieldname": "payment_account",
+   "fieldtype": "Data",
+   "label": "Payment Account",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.repayment_type === \"Loan Write Off\"",
+   "fieldname": "write_off",
+   "fieldtype": "Link",
+   "label": "Write Off",
+   "mandatory_depends_on": "eval:doc.repayment_type === \"Loan Write Off\"",
+   "options": "Account"
+  },
+  {
+   "depends_on": "eval:doc.repayment_type === \"Loan Write Off\"",
+   "fieldname": "write_off_details_section",
+   "fieldtype": "Section Break",
+   "label": "Write Off Details"
+  },
+  {
+   "fieldname": "column_break_14",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.repayment_type === \"External Sources\"",
+   "fieldname": "repayment_details_section",
+   "fieldtype": "Section Break",
+   "label": "Repayment Details"
+  },
+  {
+   "depends_on": "eval:doc.repayment_type === \"External Sources\"",
+   "fieldname": "repayment_account",
+   "fieldtype": "Link",
+   "label": "Repayment Account",
+   "mandatory_depends_on": "eval:doc.repayment_type === \"External Sources\"",
+   "options": "Account"
+  },
+  {
+   "fieldname": "column_break_19",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.repayment_type === \"External Sources\"",
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "fetch_from": "loan.company",
+   "fieldname": "company",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Company"
+  },
+  {
+   "fieldname": "write_off_amount",
+   "fieldtype": "Currency",
+   "label": "Write Off Amount"
+  },
+  {
+   "depends_on": "eval:doc.repayment_type === \"External Sources\"",
+   "fieldname": "repayment_amount",
+   "fieldtype": "Currency",
+   "label": "Repayment Amount"
+  },
+  {
+   "fieldname": "payment_date",
+   "fieldtype": "Date",
+   "label": "Payment Date",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2023-02-13 18:23:54.470678",
+ "modified_by": "Administrator",
+ "module": "Custom Loan",
+ "name": "Custom Loan Repayment",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "select": 1,
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Loan Manager",
+   "select": 1,
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "track_seen": 1
+}
