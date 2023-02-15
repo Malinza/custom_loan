@@ -8,6 +8,7 @@ from dateutil.relativedelta import relativedelta
 from frappe import _
 from frappe.utils import cint, flt
 from datetime import datetime, timedelta, date
+from frappe.utils import nowdate
 
 class CustomLoanRepayment(Document):
 	def before_save(self):
@@ -20,6 +21,55 @@ class CustomLoanRepayment(Document):
 			self.update_outstanding_amount()
 		elif self.repayment_type == "External Sources":
 			self.update_outstanding_amount2()
+		self.create_journal_entry()
+
+	def create_journal_entry(self):
+		if self.repayment_type == "External Sources":
+			journal_entry = frappe.new_doc("Journal Entry")
+			journal_entry.voucher_type = "Journal Entry"
+			journal_entry.company = self.company
+			journal_entry.posting_date = nowdate()
+			journal_entry.user_remark = "Loan Repayment \n" + self.description
+			journal_entry.cheque_no = self.name
+			journal_entry.cheque_date = self.cheque_date
+
+			journal_entry.append("accounts", {
+				"account": self.repayment_account,
+				"debit_in_account_currency": self.repayment_amount,
+				"credit_in_account_currency": 0
+				})
+			journal_entry.append("accounts", {
+				"account": self.loan_account,
+				"party_type": self.applicant_type,
+				"party": self.applicant,
+				"credit_in_account_currency": self.repayment_amount,
+				"debit_in_account_currency": 0
+				})
+			journal_entry.save()
+			journal_entry.submit()
+		elif self.repayment_type == "Loan Write Off":
+			journal_entry = frappe.new_doc("Journal Entry")
+			journal_entry.voucher_type = "Journal Entry"
+			journal_entry.company = self.company
+			journal_entry.posting_date = nowdate()
+			journal_entry.user_remark = "Loan Write Off"
+			journal_entry.cheque_no = self.name
+			journal_entry.cheque_date = self.cheque_date
+
+			journal_entry.append("accounts", {
+				"account": self.write_off_account,
+				"debit_in_account_currency": self.write_off_amount,
+				"credit_in_account_currency": 0
+				})
+			journal_entry.append("accounts", {
+				"account": self.loan_account,
+				"party_type": self.applicant_type,
+				"party": self.applicant,
+				"credit_in_account_currency": self.write_off_amount,
+				"debit_in_account_currency": 0
+				})
+			journal_entry.save()
+			journal_entry.submit()
 
 	def on_cancel(self):
 		self.cancel_reschedule_repayment_schedule()
