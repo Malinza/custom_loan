@@ -64,8 +64,8 @@
   "column_break_19",
   "total_interest_payable",
   "total_amount_paid",
-  "amended_from",
-  "rate_of_interest"
+  "rate_of_interest",
+  "amended_from"
  ],
  "fields": [
   {
@@ -338,7 +338,7 @@
    "fieldtype": "Table",
    "label": "Repayment Schedule",
    "no_copy": 1,
-   "options": "Repayment",
+   "options": "Custom Loan Repayment Schedule",
    "read_only": 1
   },
   {
@@ -521,9 +521,13 @@
   {
    "link_doctype": "Journal Entry",
    "link_fieldname": "cheque_no"
+  },
+  {
+   "link_doctype": "Custom Loan Repayment",
+   "link_fieldname": "name"
   }
  ],
- "modified": "2023-02-13 10:48:14.133125",
+ "modified": "2023-02-15 12:39:38.398198",
  "modified_by": "Administrator",
  "module": "Custom Loan",
  "name": "Custom Loan",

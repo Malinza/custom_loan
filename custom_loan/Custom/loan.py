@@ -3,7 +3,7 @@ from frappe.model.mapper import get_mapped_doc
 from frappe.utils import nowdate
 
 @frappe.whitelist()
-def make_loan_disbursement_journal_entry(loan, company,applicant,debit_account,credit_account, ref_date, pending_amount, as_dict=0):
+def make_loan_disbursement_journal_entry(loan, company,applicant,debit_account,applicant_type,credit_account, ref_date, pending_amount, as_dict=0):
     disbursement_entry = frappe.new_doc("Journal Entry")
     disbursement_entry.voucher_type = "Journal Entry"
     disbursement_entry.company = company
@@ -16,7 +16,7 @@ def make_loan_disbursement_journal_entry(loan, company,applicant,debit_account,c
 
     # set the values for the item
     new_item.account = debit_account
-    new_item.party_type = 'Employee'
+    new_item.party_type = applicant_type
     new_item.party = applicant
     new_item.debit_in_account_currency = pending_amount
     new_item.credit_in_account_currency = 0

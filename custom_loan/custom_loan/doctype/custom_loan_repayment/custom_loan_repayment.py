@@ -83,12 +83,13 @@ class CustomLoanRepayment(Document):
 			if d.is_paid == 1:
 				options.append({'value': d.payment_date, 'label': d.payment_date})
 		if len(options) == 0:
-			last_payment_date = self.payment_date
+			last_payment_date = datetime.strptime(self.payment_date, "%Y-%m-%d")
+			last_payment_date = last_payment_date.replace(day=1)
 		else:
 			last_payment_date = options[-1]['value']
+			last_payment_date = last_payment_date.replace(day=1)
 			last_payment_date = last_payment_date + relativedelta(months=1)
 			last_payment_date = last_payment_date.replace(day=1)
-			last_payment_date = datetime.strftime(last_payment_date, "%Y-%m-%d")
 
 		if self.repayment_type == "External Sources":
 			repayment_amount = self.repayment_amount
@@ -104,9 +105,8 @@ class CustomLoanRepayment(Document):
 
 		while loan_amount > 0:
 			payment = {}
-			payment_date = datetime.strptime(last_payment_date, "%Y-%m-%d")
-			next_month = payment_date + relativedelta(months=1)
-			payment["payment_date"] = next_month.replace(day=1)
+			payment_date = last_payment_date
+			payment["payment_date"] = payment_date.replace(day=1)
 			payment["payment_date"] = payment["payment_date"] + relativedelta(months=1 * payment_counter)
 			payment["principal_amount"] = min(loan_amount, monthly_repayment_amount)
 			payment["total_payment"] = payment["principal_amount"]
@@ -132,14 +132,17 @@ class CustomLoanRepayment(Document):
 		loan_amountt -= repayment_amount
 		
 		# custom_loan.repayment_schedule = []
-		payment_dt = datetime.strptime(last_payment_date, "%Y-%m-%d")
+		payment_dt = last_payment_date
 		payment_dt = payment_dt.replace(day=1)
 		custom_loan.append("repayment_schedule", {
 			"payment_date": payment_dt.strftime("%Y-%m-%d"),
 			"principal_amount": 0,
 			"total_payment": repayment_amount,
 			"balance_loan_amount": loan_amountt,
-			"is_paid": 1
+			"is_paid": 1,
+			"outsource": 1,
+			"repayment_reference": self.name
+
 		})
 		# custom_loan.save()
 
@@ -235,7 +238,9 @@ class CustomLoanRepayment(Document):
 				"principal_amount": d.principal_amount,
 				"total_payment": d.total_payment,
 				"balance_loan_amount": loan_amounts,
-				"is_paid": 1
+				"is_paid": 1,
+				"outsource": d.outsource,
+				"repayment_reference": d.repayment_reference
 
 			})
 		for i, d in enumerate(custom_loan.repayment_schedule):

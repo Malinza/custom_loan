@@ -612,6 +612,7 @@ frappe.ui.form.on("Custom Loan", {
 				"company": frm.doc.company,
 				"ref_date": frm.doc.posting_date,
 				"applicant": frm.doc.applicant,
+				"applicant_type": frm.doc.applicant_type,
 				"loan_application": frm.doc.loan_application,
 				"applicant_name": frm.doc.applicant_name,
 				"pending_amount": frm.doc.loan_amount - frm.doc.disbursed_amount,

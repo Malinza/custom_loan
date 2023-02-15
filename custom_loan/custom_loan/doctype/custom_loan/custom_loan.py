@@ -88,10 +88,23 @@ class CustomLoan(AccountsController):
 		self.set_status_from_docstatus()
 
 	def on_cancel(self):
+		self.before_cancel_document()
 		self.unlink_loan_security_pledge()
-		self.cancel_linked_journal_entry()
+		self.cancel_linked_journal_entry(method=None)
 		self.ignore_linked_doctypes = ["GL Entry", "Payment Ledger Entry"]
-		
+
+	def before_cancel_document(self):
+		connected_docs = frappe.get_list("Journal Entry", filters={"cheque_no": self.name},fields={"docstatus"})
+			
+		for doc in connected_docs:
+			if doc.docstatus == 1:
+				frappe.throw(_("You must cancel all connected documents before cancelling this document"))
+
+		connected_doc = frappe.get_list("Custom Loan Repayment", filters={"loan": self.name},fields={"docstatus"})
+
+		for doc in connected_doc:
+			if doc.docstatus == 1:
+				frappe.throw(_("You must cancel all connected documents before cancelling this document"))
 
 	def cancel_linked_journal_entry(doc, method):
 		if doc.doctype == "Payment Entry" and doc.docstatus == 2: # check if document is Payment Entry and is cancelled

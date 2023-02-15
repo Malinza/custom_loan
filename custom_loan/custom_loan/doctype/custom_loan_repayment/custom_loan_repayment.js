@@ -22,7 +22,7 @@ frappe.ui.form.on('Custom Loan Repayment', {
 			return {
 				filters: {
 					'company': frm.doc.company,
-					'root_type': 'Asset',
+					'root_type': 'Expense',
 					'is_group': 0
 				}
 			}
@@ -31,7 +31,8 @@ frappe.ui.form.on('Custom Loan Repayment', {
 			return {
 				filters: {
 					'docstatus': 1,
-					'status': 'Disbursed'
+					'status': 'Disbursed',
+					'applicant': frm.doc.applicant
 				}
 			}
 		});
@@ -43,9 +44,9 @@ frappe.ui.form.on('Custom Loan Repayment', {
 				frappe.db.get_value('Company', frm.doc.company, 'default_currency', function(currency) {
 					var pending_amount = flt(values.total_payment - values.total_amount_paid, 2);
 					var formatted_amount = pending_amount.toLocaleString(undefined, { style: 'currency', currency: currency.default_currency });
-					frm.set_df_property('write_off_amount', 'description', "Pending loan amount is " + formatted_amount);
+					frm.set_df_property('write_off_amount', 'description', "Pending loan balance amount is " + formatted_amount);
 					frm.refresh_field('write_off_amount');
-					frm.set_df_property('repayment_amount', 'description', "Pending loan amount is " + formatted_amount);
+					frm.set_df_property('repayment_amount', 'description', "Pending loan balance amount is " + formatted_amount);
 					frm.refresh_field('repayment_amount');
 				});
 			});
