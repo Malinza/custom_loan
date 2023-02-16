@@ -467,10 +467,6 @@ frappe.ui.form.on("Custom Loan", {
 				frm.add_custom_button(__('Request Loan Closure'), function() {
 					frm.trigger("request_loan_closure");
 				},__('Status'));
-
-				frm.add_custom_button(__('Loan Repayment'), function() {
-					frm.trigger("make_repayment_entry");
-				},__('Create'));
 			}
 
 			if (["Sanctioned", "Partially Disbursed"].includes(frm.doc.status)) {
