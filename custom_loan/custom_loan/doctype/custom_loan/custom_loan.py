@@ -7,6 +7,7 @@ import math
 
 import frappe
 from frappe import _
+from frappe.utils import get_link_to_form
 from frappe.utils import (
 	add_days,
 	add_months,
@@ -94,18 +95,19 @@ class CustomLoan(AccountsController):
 		self.ignore_linked_doctypes = ["GL Entry", "Payment Ledger Entry"]
 
 	def before_cancel_document(self):
-		connected_docs = frappe.get_list("Journal Entry", filters={"cheque_no": self.name},fields={"docstatus"})
+		connected_docs = frappe.get_list("Journal Entry", filters={"cheque_no": self.name},fields={"docstatus","name"})
 			
 		for doc in connected_docs:
 			if doc.docstatus == 1:
-				frappe.throw(_("You must cancel all connected documents before cancelling this document"))
-
-		connected_doc = frappe.get_list("Custom Loan Repayment", filters={"loan": self.name},fields={"docstatus"})
+				link = get_link_to_form("Journal Entry", doc.name)
+				frappe.throw(_("You must cancel journal entry {0} before cancelling this document").format(link))
+				
+		connected_doc = frappe.get_list("Custom Loan Repayment", filters={"loan": self.name},fields={"docstatus","name"})
 
 		for doc in connected_doc:
 			if doc.docstatus == 1:
-				frappe.throw(_("You must cancel all connected documents before cancelling this document"))
-
+				link = get_link_to_form("Custom Loan Repayment", doc.name)
+				frappe.throw(_("You must cancel connected repayment entries {0} before cancelling this document").format(link))
 
 	# frappe.db.after_cancel("Payment Entry", cancel_linked_journal_entry)
 
