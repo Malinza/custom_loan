@@ -31,6 +31,7 @@ class CustomLoan(AccountsController):
 	def on_update(self):
 		self.validate_accounts()
 		self.validate_cost_center()
+		# self.set_status_from_docstatus()
 
 	def after_submit_on_update(self):
 		self.set_status_from_docstatus(self)
@@ -90,7 +91,6 @@ class CustomLoan(AccountsController):
 	def on_cancel(self):
 		self.before_cancel_document()
 		self.unlink_loan_security_pledge()
-		self.cancel_linked_journal_entry(method=None)
 		self.ignore_linked_doctypes = ["GL Entry", "Payment Ledger Entry"]
 
 	def before_cancel_document(self):
@@ -105,14 +105,6 @@ class CustomLoan(AccountsController):
 		for doc in connected_doc:
 			if doc.docstatus == 1:
 				frappe.throw(_("You must cancel all connected documents before cancelling this document"))
-
-	def cancel_linked_journal_entry(doc, method):
-		if doc.doctype == "Payment Entry" and doc.docstatus == 2: # check if document is Payment Entry and is cancelled
-			je_name = frappe.db.get_value("Journal Entry", {"cheque_no": doc.name}, "name")
-			if je_name: # check if a Journal Entry exists for the Payment Entry
-				je_doc = frappe.get_doc("Journal Entry", je_name)
-				if je_doc.docstatus == 1: # check if Journal Entry is submitted
-					je_doc.cancel()
 
 
 	# frappe.db.after_cancel("Payment Entry", cancel_linked_journal_entry)
@@ -393,26 +385,11 @@ def get_monthly_repayment_amount(loan_amount, rate_of_interest, repayment_period
 
 
 @frappe.whitelist()
-def request_loan_closure(loan, posting_date=None):
-	if not posting_date:
-		posting_date = getdate()
+def request_loan_closure(loan,loan_amount, total_amount_paid):
 
-	amounts = calculate_amounts(loan, posting_date)
-	pending_amount = (
-		amounts["pending_principal_amount"]
-		+ amounts["unaccrued_interest"]
-		+ amounts["interest_amount"]
-		+ amounts["penalty_amount"]
-	)
+	pending_amount = flt(loan_amount) - flt(total_amount_paid)
 
-	loan_type = frappe.get_value("Custom Loan", loan, "loan_type")
-	write_off_limit = frappe.get_value("Loan Type", loan_type, "write_off_amount")
-
-	if pending_amount and abs(pending_amount) < write_off_limit:
-		# Auto create loan write off and update status as loan closure requested
-		write_off = make_loan_write_off(loan)
-		write_off.submit()
-	elif pending_amount > 0:
+	if pending_amount > 0:
 		frappe.throw(_("Cannot close loan as there is an outstanding of {0}").format(pending_amount))
 
 	frappe.db.set_value("Custom Loan", loan, "status", "Loan Closure Requested")
@@ -485,25 +462,28 @@ def make_loan_write_off(loan, company=None, posting_date=None, amount=0, as_dict
 		company = frappe.get_value("Custom Loan", loan, "company")
 
 	if not posting_date:
-		posting_date = getdate()
+		posting_date = frappe.get_value("Custom Loan", loan, "posting_date")
 
-	amounts = calculate_amounts(loan, posting_date)
-	pending_amount = amounts["pending_principal_amount"]
+	amount = frappe.get_value("Custom Loan", loan, "loan_amount")
+	amt = 0
+	pending_amount = frappe.get_value("Custom Loan", loan, "total_amount_paid")
 
-	if amount and (amount > pending_amount):
-		frappe.throw(_("Write Off amount cannot be greater than pending loan amount"))
+	amt = amount - pending_amount
 
-	if not amount:
-		amount = pending_amount
+	payment_date = getdate()
 
 	# get default write off account from company master
 	write_off_account = frappe.get_value("Company", company, "write_off_account")
 
-	write_off = frappe.new_doc("Loan Write Off")
+	write_off = frappe.new_doc("Custom Loan Repayment")
+	write_off.applicant = frappe.get_value("Custom Loan", loan, "applicant")
 	write_off.loan = loan
-	write_off.posting_date = posting_date
-	write_off.write_off_account = write_off_account
-	write_off.write_off_amount = amount
+	write_off.cheque_date = posting_date
+	write_off.payment_date = payment_date
+	write_off.repayment_type = "Loan Write Off"
+	write_off.write_off = write_off_account
+	write_off.write_off_amount = amt
+	write_off.company = company
 	write_off.save()
 
 	if as_dict:
@@ -511,6 +491,36 @@ def make_loan_write_off(loan, company=None, posting_date=None, amount=0, as_dict
 	else:
 		return write_off
 
+@frappe.whitelist()
+def make_loan_write_off_by_external_sources_entry(loan, company=None, posting_date=None, amount=0, as_dict=0):
+	if not company:
+		company = frappe.get_value("Custom Loan", loan, "company")
+
+	if not posting_date:
+		posting_date = frappe.get_value("Custom Loan", loan, "posting_date")
+
+	amount = frappe.get_value("Custom Loan", loan, "loan_amount")
+	amt = 0
+	pending_amount = frappe.get_value("Custom Loan", loan, "total_amount_paid")
+
+	amt = amount - pending_amount
+
+	payment_date = getdate()
+
+	write_off_by_external_sources = frappe.new_doc("Custom Loan Repayment")
+	write_off_by_external_sources.applicant = frappe.get_value("Custom Loan", loan, "applicant")
+	write_off_by_external_sources.loan = loan
+	write_off_by_external_sources.cheque_date = posting_date
+	write_off_by_external_sources.payment_date = payment_date
+	write_off_by_external_sources.repayment_type = "External Sources"
+	write_off_by_external_sources.repayment_amount = amt
+	write_off_by_external_sources.description = "Loan Repayment By External Sources i.e. Cash, Cheque, Bank Transfer, etc."
+	write_off_by_external_sources.company = company
+
+	if as_dict:
+		return write_off_by_external_sources.as_dict()
+	else:
+		return write_off_by_external_sources
 
 @frappe.whitelist()
 def unpledge_security(

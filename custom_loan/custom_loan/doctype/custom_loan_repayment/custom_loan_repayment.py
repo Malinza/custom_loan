@@ -57,7 +57,7 @@ class CustomLoanRepayment(Document):
 			journal_entry.cheque_date = self.cheque_date
 
 			journal_entry.append("accounts", {
-				"account": self.write_off_account,
+				"account": self.write_off,
 				"debit_in_account_currency": self.write_off_amount,
 				"credit_in_account_currency": 0
 				})
@@ -72,6 +72,7 @@ class CustomLoanRepayment(Document):
 			journal_entry.submit()
 
 	def on_cancel(self):
+		self.ignore_linked_doctypes = ("Custom Loan")
 		self.cancel_reschedule_repayment_schedule()
 		if self.repayment_type == "Loan Write Off":
 			self.update_outstanding_amount(cancel=1)

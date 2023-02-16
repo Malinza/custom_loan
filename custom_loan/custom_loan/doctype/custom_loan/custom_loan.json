@@ -95,7 +95,8 @@
    "fieldtype": "Link",
    "label": "Loan Application",
    "no_copy": 1,
-   "options": "Loan Application"
+   "options": "Loan Application",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_3",
@@ -460,6 +461,7 @@
   },
   {
    "allow_on_submit": 1,
+   "depends_on": "eval:doc.docstatus === 1",
    "fieldname": "change_months_paid",
    "fieldtype": "Button",
    "hidden": 1,
@@ -476,24 +478,28 @@
   },
   {
    "allow_on_submit": 1,
+   "depends_on": "eval:doc.docstatus && doc.docstatus === 1",
    "fieldname": "dont_deduct_this_month",
    "fieldtype": "Button",
    "label": "Don't Deduct"
   },
   {
    "allow_on_submit": 1,
+   "depends_on": "eval:doc.docstatus && doc.docstatus === 1",
    "fieldname": "deduct_amount",
    "fieldtype": "Button",
    "label": "Change Deduction Amount"
   },
   {
    "allow_on_submit": 1,
+   "depends_on": "eval:doc.docstatus && doc.docstatus === 1",
    "fieldname": "change_monthly_repayment_amount",
    "fieldtype": "Button",
    "label": "Monthly Deduction Amount"
   },
   {
    "allow_on_submit": 1,
+   "depends_on": "eval:doc.docstatus && doc.docstatus === 1",
    "fieldname": "deduction_till",
    "fieldtype": "Button",
    "label": "Deduction Till"
@@ -527,7 +533,7 @@
    "link_fieldname": "loan"
   }
  ],
- "modified": "2023-02-15 13:07:30.775963",
+ "modified": "2023-02-16 11:59:05.294849",
  "modified_by": "Administrator",
  "module": "Custom Loan",
  "name": "Custom Loan",
