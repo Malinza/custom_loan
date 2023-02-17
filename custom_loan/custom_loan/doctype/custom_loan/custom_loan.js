@@ -135,7 +135,7 @@ frappe.ui.form.on("Custom Loan", {
 				var childTable = frm.doc.repayment_schedule;
 				for (var i = childTable.length - 1; i >= 0; i--) {
 					
-				if (childTable[i].payment_date === formattedDaten) {
+				if (childTable[i].payment_date === formattedDaten && !childTable[i].outsource && !childTable[i].repayment_reference) {
 					childTable[i].total_payment = 0;
 					childTable[i].is_paid = 0;
 					childTable[i].balance_loan_amount = loanAmount;
