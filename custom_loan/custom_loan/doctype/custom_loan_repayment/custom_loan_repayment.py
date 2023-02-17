@@ -72,8 +72,8 @@ class CustomLoanRepayment(Document):
 			journal_entry.submit()
 
 	def on_cancel(self):
-		self.ignore_linked_doctypes = ("Custom Loan")
 		self.cancel_reschedule_repayment_schedule()
+		self.ignore_linked_doctypes = ("Custom Loan")
 		if self.repayment_type == "Loan Write Off":
 			self.update_outstanding_amount(cancel=1)
 		elif self.repayment_type == "External Sources":

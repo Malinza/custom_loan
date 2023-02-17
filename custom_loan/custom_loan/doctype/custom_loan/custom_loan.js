@@ -8,7 +8,7 @@ frappe.ui.form.on("Custom Loan", {
 		frm.make_methods = {
 			'Loan Disbursement': function() { frm.trigger('make_loan_disbursement') },
 			'Loan Write Off': function() { frm.trigger('make_loan_write_off_entry') },
-			'Loan Write Off By External Sources': function() { frm.trigger('make_loan_write_off_by_external_sources_entry') },
+			'Loan Repayment By External Sources': function() { frm.trigger('make_loan_write_off_by_external_sources_entry') },
 		}
 	},
 	onload: function (frm) {
@@ -479,7 +479,7 @@ frappe.ui.form.on("Custom Loan", {
 				frm.add_custom_button(__('Loan Write Off'), function() {
 					frm.trigger("make_loan_write_off_entry");
 				},__('Create'));
-				frm.add_custom_button(__('Loan Write Off by External Sources'), function() {
+				frm.add_custom_button(__('Loan Repayment by External Sources'), function() {
 					frm.trigger("make_loan_write_off_by_external_sources_entry");
 				},__('Create'));
 			}
