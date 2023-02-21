@@ -1,6 +1,7 @@
 import frappe
 from frappe.model.mapper import get_mapped_doc
 from frappe.utils import nowdate
+from datetime import datetime
 
 @frappe.whitelist()
 def make_loan_disbursement_journal_entry(loan, company,applicant,debit_account,applicant_type,credit_account, ref_date, pending_amount, as_dict=0):
@@ -45,3 +46,85 @@ def on_submit(doc, method):
             cs_loan.save()
         else:
             frappe.throw("Disbursed amount is not equal to loan amount")
+
+@frappe.whitelist()
+def add_additional_salary(doc, method):
+    default_company = frappe.defaults.get_global_default("company")
+    default_companyy = frappe.get_doc("Company", default_company)
+    default_company_abbr = default_companyy.abbr
+
+        # Check if the "Loans and Advances (Assets)" parent account exists
+    if not frappe.db.exists("Account", "Loans and Advances (Assets) - " + default_company_abbr):
+            # If it doesn't exist, create it with default values
+        loans_and_advances = frappe.new_doc("Account")
+        loans_and_advances.update({
+            "account_name": "Loans and Advances (Assets) - " + default_company_abbr,
+            "parent_account": "Current Assets - " + default_company_abbr,
+            "root_type": "Asset",
+            "company": default_company,
+            "is_group": 1
+        })
+        loans_and_advances.insert()
+        loans_and_advances = frappe.get_doc("Account", "Loans and Advances (Assets) - " + default_company_abbr)
+    else:
+        loans_and_advances = frappe.get_doc("Account", "Loans and Advances (Assets) - " + default_company_abbr)
+
+        # Check if the "Staff Loan" account already exists
+    if not frappe.db.exists("Account", "Staff Loan - " + default_company_abbr):
+            # If it doesn't exist, create it with default values and "Loans and Advances (Assets)" as the parent
+        staff_loan_account = frappe.new_doc("Account")
+        staff_loan_account.update({
+            "account_name": "Staff Loan",
+            "parent_account": loans_and_advances.name,
+            "root_type": loans_and_advances.root_type,
+            "account_type": "Asset",
+            "company": default_company
+        })
+        staff_loan_account.insert()
+        # Check if the "Staff Loan" Salary Component already exists
+    if not frappe.db.exists("Salary Component", "Staff Loan"):
+            # Create a new "Staff Loan" Salary Component with the desired values
+        staff_loan_component = frappe.new_doc("Salary Component")
+        staff_loan_component.salary_component = "Staff Loan"
+        staff_loan_component.salary_component_type = "Deduction"
+        staff_loan_component.payroll_frequency = "Monthly"
+        staff_loan_component.amount_based_on_formula = 0
+        staff_loan_component.insert()
+        staff_loan_component = frappe.get_doc("Salary Component", "Staff Loan")
+    else:
+        staff_loan_component = frappe.get_doc("Salary Component", "Staff Loan")
+        # Check if the document is being submitted
+    for i in doc.employees:
+            # Check if the "Custom Loan" document already exists
+        if frappe.db.exists("Custom Loan", {"applicant": i.employee, "status": "Disbursed"}):
+                # If it does, get the document
+            frappe.msgprint("Custom Loan document found {0}". format(i.employee))
+            custom_loan = frappe.get_list("Custom Loan", filters={
+                "applicant": i.employee, 
+                "status": "Disbursed"
+                })
+                # Get Repayment Schedule Amount
+            new_checkk = datetime.strptime(doc.posting_date, "%Y-%m-%d").date()
+            frappe.msgprint("Date is {0}". format(new_checkk))
+            new_check = new_checkk.replace(day=1)
+            repayment_amount = 0
+            custom_loann = frappe.get_doc("Custom Loan", custom_loan)
+            for d in custom_loann.repayment_schedule:
+                frappe.msgprint("Payment Date {0}". format(d.payment_date))
+                if d.payment_date == new_check and d.total_payment > 0 and d.is_paid == 0:
+                    repayment_amount = d.total_payment
+                    frappe.msgprint("Repayment amount found {0}". format(repayment_amount))
+                else:
+                    frappe.msgprint("No repayment amount found")
+                # Check if Additional Salary already exists
+                if not frappe.db.exists("Additional Salary", {"employee": i.employee, "salary_component": staff_loan_component.name, "payroll_date": doc.posting_date, "docstatus": 1, "amount": repayment_amount}): 
+                    # If it doesn't exist, create a new Additional Salary
+                    new_additional_salary = frappe.new_doc("Additional Salary")
+                    new_additional_salary.employee = i.employee
+                    new_additional_salary.employee_name = i.employee_name
+                    new_additional_salary.company = default_company
+                    new_additional_salary.salary_component = staff_loan_component.name
+                    new_additional_salary.amount = repayment_amount
+                    new_additional_salary.payroll_date = doc.posting_date
+                    new_additional_salary.insert()
+                    new_additional_salary.submit()       

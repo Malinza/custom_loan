@@ -105,6 +105,9 @@ doctype_js = {"Loan Application" : "public/js/button.js"}
 doc_events = {
 	"Journal Entry": {
 		"on_submit": "custom_loan.Custom.loan.on_submit",
+	},
+    "Payroll Entry": {
+		"before_submit": "custom_loan.Custom.loan.add_additional_salary",
 	}
 }
 
