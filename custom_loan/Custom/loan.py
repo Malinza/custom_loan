@@ -98,33 +98,45 @@ def add_additional_salary(doc, method):
             # Check if the "Custom Loan" document already exists
         if frappe.db.exists("Custom Loan", {"applicant": i.employee, "status": "Disbursed"}):
                 # If it does, get the document
-            frappe.msgprint("Custom Loan document found {0}". format(i.employee))
+            # frappe.msgprint("Custom Loan document found {0}". format(i.employee))
             custom_loan = frappe.get_list("Custom Loan", filters={
                 "applicant": i.employee, 
                 "status": "Disbursed"
-                })
+                },fields={"name"})
+            for loans in custom_loan:
                 # Get Repayment Schedule Amount
-            new_checkk = datetime.strptime(doc.posting_date, "%Y-%m-%d").date()
-            frappe.msgprint("Date is {0}". format(new_checkk))
-            new_check = new_checkk.replace(day=1)
-            repayment_amount = 0
-            custom_loann = frappe.get_doc("Custom Loan", custom_loan)
-            for d in custom_loann.repayment_schedule:
-                frappe.msgprint("Payment Date {0}". format(d.payment_date))
-                if d.payment_date == new_check and d.total_payment > 0 and d.is_paid == 0:
-                    repayment_amount = d.total_payment
-                    frappe.msgprint("Repayment amount found {0}". format(repayment_amount))
-                else:
-                    frappe.msgprint("No repayment amount found")
-                # Check if Additional Salary already exists
-                if not frappe.db.exists("Additional Salary", {"employee": i.employee, "salary_component": staff_loan_component.name, "payroll_date": doc.posting_date, "docstatus": 1, "amount": repayment_amount}): 
-                    # If it doesn't exist, create a new Additional Salary
-                    new_additional_salary = frappe.new_doc("Additional Salary")
-                    new_additional_salary.employee = i.employee
-                    new_additional_salary.employee_name = i.employee_name
-                    new_additional_salary.company = default_company
-                    new_additional_salary.salary_component = staff_loan_component.name
-                    new_additional_salary.amount = repayment_amount
-                    new_additional_salary.payroll_date = doc.posting_date
-                    new_additional_salary.insert()
-                    new_additional_salary.submit()       
+                new_checkk = datetime.strptime(doc.start_date, "%Y-%m-%d").date()
+                # frappe.msgprint("Date is {0}". format(new_checkk))
+                new_check = new_checkk.replace(day=1)
+                repayment_amount = 0
+                custom_loann = frappe.get_doc("Custom Loan", loans)
+                for d in custom_loann.repayment_schedule:
+                    # frappe.msgprint("Payment Date {0}". format(d.payment_date))
+                    if d.payment_date == new_check and d.total_payment > 0 and d.is_paid == 0:
+                        repayment_amount = d.total_payment
+                        if not frappe.db.exists("Additional Salary", {"employee": i.employee, "salary_component": staff_loan_component.name, "payroll_date": new_check, "docstatus": 1, "amount": repayment_amount}): 
+                            # If it doesn't exist, create a new Additional Salary
+                            new_additional_salary = frappe.new_doc("Additional Salary")
+                            new_additional_salary.employee = i.employee
+                            new_additional_salary.employee_name = i.employee_name
+                            new_additional_salary.company = default_company
+                            new_additional_salary.salary_component = staff_loan_component.name
+                            new_additional_salary.amount = repayment_amount
+                            new_additional_salary.payroll_date = doc.start_date
+                            new_additional_salary.insert()
+                            new_additional_salary.submit()
+
+def do_cancel(doc, method):
+    if doc.docstatus == 2:
+        for i in doc.employees:
+            if frappe.db.exists("Additional Salary", {"employee": i.employee, "salary_component": "Staff Loan", "payroll_date": doc.start_date, "docstatus": 1}):
+                add_salary = frappe.get_list("Additional Salary", filters={
+                    "employee": i.employee,
+                    "salary_component": "Staff Loan",
+                    "payroll_date": doc.start_date,
+                    "docstatus": 1
+                }, fields={"name"})
+                for add in add_salary:
+                    additional_salary = frappe.get_doc("Additional Salary", add)
+                    additional_salary.cancel()
+                    additional_salary.delete()  

@@ -12,19 +12,19 @@
   "total_payment",
   "balance_loan_amount",
   "is_paid",
+  "payment_reference",
   "outsource",
   "repayment_reference"
  ],
  "fields": [
   {
-   "columns": 2,
+   "columns": 1,
    "fieldname": "payment_date",
    "fieldtype": "Date",
    "in_list_view": 1,
    "label": "Payment Date"
   },
   {
-   "columns": 2,
    "fieldname": "principal_amount",
    "fieldtype": "Currency",
    "hidden": 1,
@@ -38,7 +38,7 @@
   },
   {
    "allow_on_submit": 1,
-   "columns": 2,
+   "columns": 1,
    "fieldname": "total_payment",
    "fieldtype": "Currency",
    "in_list_view": 1,
@@ -59,6 +59,7 @@
   },
   {
    "allow_on_submit": 1,
+   "columns": 1,
    "default": "0",
    "fieldname": "is_paid",
    "fieldtype": "Check",
@@ -67,6 +68,7 @@
   },
   {
    "allow_on_submit": 1,
+   "columns": 1,
    "default": "0",
    "fieldname": "outsource",
    "fieldtype": "Check",
@@ -76,17 +78,28 @@
   },
   {
    "allow_on_submit": 1,
+   "columns": 2,
    "fieldname": "repayment_reference",
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Repayment Reference",
    "options": "Custom Loan Repayment",
    "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "columns": 2,
+   "fieldname": "payment_reference",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Payment Reference",
+   "options": "Additional Salary",
+   "read_only": 1
   }
  ],
  "istable": 1,
  "links": [],
- "modified": "2023-02-16 10:01:12.351473",
+ "modified": "2023-02-21 13:16:00.927921",
  "modified_by": "Administrator",
  "module": "Custom Loan",
  "name": "Custom Loan Repayment Schedule",
