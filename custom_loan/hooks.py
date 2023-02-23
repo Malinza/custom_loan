@@ -109,7 +109,10 @@ doc_events = {
     "Payroll Entry": {
 		"before_submit": "custom_loan.Custom.loan.add_additional_salary",
         "on_cancel": "custom_loan.Custom.loan.do_cancel",
-	}
+	},
+    "Additional Salary": {
+		"before_cancel": "custom_loan.Custom.loan.do_cancell",
+	},
 }
 
 # Scheduled Tasks

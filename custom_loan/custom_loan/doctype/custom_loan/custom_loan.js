@@ -136,9 +136,19 @@ frappe.ui.form.on("Custom Loan", {
 				for (var i = childTable.length - 1; i >= 0; i--) {
 					
 				if (childTable[i].payment_date === formattedDaten && !childTable[i].outsource && !childTable[i].repayment_reference) {
-					childTable[i].total_payment = 0;
-					childTable[i].is_paid = 0;
-					childTable[i].balance_loan_amount = loanAmount;
+					if (childTable[i].payment_reference){
+					frappe.call({
+						method: "custom_loan.Custom.loan.update_additional_salary",
+						args: {
+							amount: 0,
+							ref_name: childTable[i].payment_reference,
+							loan: frm.doc.name
+						},
+					});
+					frm.doc.repayment_schedule.splice(i, 1);
+				}else {
+					frm.doc.repayment_schedule.splice(i, 1);
+				}
 				  }  
 				}
 					for (const d of repaymentSchedule) {
@@ -167,8 +177,12 @@ frappe.ui.form.on("Custom Loan", {
 								}
 					frm.refresh_field("repayment_schedule");
 					frm.save('Update');
-				}, __("Choose a Certain Period not to deduct"), __("Update"));		
+				}, __("Choose a Certain Period not to deduct"), __("Update"));	
+				// frm.trigger("update_additional_salary");	
 	},
+	// update_additional_salary: (frm) => {
+		
+	// },
 	deduct_amount: (frm) => {
 		frappe.call({
 			method: "frappe.client.get",
@@ -187,64 +201,33 @@ frappe.ui.form.on("Custom Loan", {
 				{fieldname: "payment_date", label: __("Date to change deduction Amount"), fieldtype: "Select", options: options, reqd: 1},
 				{fieldname: "amount", label: __("Amount"), fieldtype: "Currency", reqd: 1}
 			  ], function (data) {
-			var loanAmount = frm.doc.loan_amount - frm.doc.total_amount_paid;
-			var monthlyRepaymentAmount = frm.doc.monthly_repayment_amount;
-			loanAmount = loanAmount - data.amount;
-
-			var repaymentSchedule = [];
-			
-			var paymentCounter = 0;
-
-			while (loanAmount > 0) {
-				var payment = {};
-				var dt = new Date(data.payment_date);
-				var nextMonth = new Date();
-				payment.paymentDate = new Date(dt.getFullYear(), dt.getMonth(), 1);
-				nextMonth.setMonth(dt.getMonth() + 1);
-				payment.paymentDate.setMonth(nextMonth.getMonth() + paymentCounter);
-				payment.principalAmount = Math.min(loanAmount, monthlyRepaymentAmount);
-				payment.totalPayment = payment.principalAmount;
-				loanAmount -= payment.principalAmount;
-				payment.balanceLoanAmount = loanAmount;
-				repaymentSchedule.push(payment);
-				
-				paymentCounter++;
-			}
-			var loanAmount = frm.doc.loan_amount - frm.doc.total_amount_paid;
-			loanAmount = loanAmount - data.amount;
-			var childTable = frm.doc.repayment_schedule;
-			for (var i = childTable.length - 1; i >= 0; i--) {
-			  if (!childTable[i].is_paid) {
-				frm.doc.repayment_schedule.splice(i, 1);
-			  }
-			}
 				var daten = new Date(data.payment_date);
-					var year = daten.getFullYear();
-					var month = daten.getMonth() + 1;
-					var day = 1;
-					var formattedDaten = [year, month.toString().padStart(2, '0'), day.toString().padStart(2, '0')].join('-');
-				let rows = frm.add_child("repayment_schedule", {
-					payment_date: formattedDaten,
-					principal_amount: "0",
-					total_payment: data.amount,
-					balance_loan_amount: loanAmount,
-					is_paid: 0
-				  });
-				for (const d of repaymentSchedule) {
-					var daten = new Date(d.paymentDate);
-					var year = daten.getFullYear();
-					var month = daten.getMonth() + 1;
-					var day = 1;
-					var formattedDate = [year, month.toString().padStart(2, '0'), day.toString().padStart(2, '0')].join('-');
-				let row = frm.add_child("repayment_schedule", {
-				  payment_date: formattedDate,
-				  principal_amount: d.principalAmount,
-				  total_payment: d.totalPayment,
-				  balance_loan_amount: d.balanceLoanAmount
+				var year = daten.getFullYear();
+				var month = daten.getMonth() + 1;
+				var day = 1;
+				var formattedDaten = [year, month.toString().padStart(2, '0'), day.toString().padStart(2, '0')].join('-');
+
+				frappe.call({
+					method: "custom_loan.Custom.loan.update_additional_salary",
+					args: {
+						amount: data.amount,
+						ref_name: "",
+						loan_amount: frm.doc.loan_amount,
+						total_amount_paid: frm.doc.total_amount_paid,
+						input_amount: data.amount,
+						input_date: data.payment_date,
+						loan: frm.doc.name,
+						payment_date: formattedDaten
+					},
+					callback: function(me){
+							if (me.message === "pass"){
+								frm.refresh_field("repayment_schedule");
+							}
+					}
 				});
-				}
-				frm.refresh_field("repayment_schedule");
-				frm.save('Update');
+			
+				// frm.save('Update');
+				// frm.refresh_field("repayment_schedule");
 			}, __("Change Deduction Amount for a Chosen Period"), __("Update"));
 		}
 	});
