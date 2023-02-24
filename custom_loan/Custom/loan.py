@@ -263,27 +263,55 @@ def update_additional_salary(ref_name,amount,loan,payment_date,loan_amount,input
                 })
         else:
             custom_loan.append("repayment_schedule", {
-                    "payment_date": payment_dt.strftime("%Y-%m-%d"),
-                    "principal_amount": 0,
-                    "total_payment": flt(input_amount),
-                    "balance_loan_amount": loan_amountt,
-                    "is_paid": 0,
-                    "outsource": 0,
-                    "payment_reference": ""
+                "payment_date": payment_dt.strftime("%Y-%m-%d"),
+                "principal_amount": 0,
+                "total_payment": flt(input_amount),
+                "balance_loan_amount": loan_amountt,
+                "is_paid": 0,
+                "outsource": 0,
+                "payment_reference": ""
 
                 })
 		# custom_loan.save()
 
+        # for d in repayment_schedule:
+        #     payment_date = d["payment_date"]
+        #     payment_datee = payment_date.replace(day=1)
+        #     custom_loan.append("repayment_schedule", {
+		# 		"payment_date": payment_datee.strftime("%Y-%m-%d"),
+		# 		"principal_amount": 0,
+		# 		"total_payment": d["total_payment"],
+		# 		"balance_loan_amount": d["balance_loan_amount"],
+		# 		"is_paid": 0
+		# 	})
+
         for d in repayment_schedule:
             payment_date = d["payment_date"]
             payment_datee = payment_date.replace(day=1)
-            custom_loan.append("repayment_schedule", {
-				"payment_date": payment_datee.strftime("%Y-%m-%d"),
-				"principal_amount": 0,
-				"total_payment": d["total_payment"],
-				"balance_loan_amount": d["balance_loan_amount"],
-				"is_paid": 0
-			})
+            existing_payment = None
+            for existing_d in to_add:
+                if existing_d.payment_date.strftime("%Y-%m-%d") == payment_date.strftime("%Y-%m-%d"):
+                    # frappe.throw("here First: " + str(payment_date.strftime("%Y-%m-%d")) + " " + str(existing_d.payment_date))
+                    existing_payment = existing_d
+                    break
+            if existing_payment:
+                frappe.msgprint("here: " + str(existing_payment.payment_reference))
+                custom_loan.append("repayment_schedule", {
+                    "payment_date": payment_datee.strftime("%Y-%m-%d"),
+                    "principal_amount": 0,
+                    "total_payment": d["total_payment"],
+                    "payment_reference": existing_payment.payment_reference,
+                    "balance_loan_amount": d["balance_loan_amount"],
+                    "is_paid": 0
+                })
+            else:
+                custom_loan.append("repayment_schedule", {
+                    "payment_date": payment_datee.strftime("%Y-%m-%d"),
+                    "principal_amount": 0,
+                    "total_payment": d["total_payment"],
+                    "balance_loan_amount": d["balance_loan_amount"],
+                    "is_paid": 0
+                })
 		
         custom_loan.save()
         return "pass"
