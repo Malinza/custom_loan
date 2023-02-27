@@ -217,6 +217,7 @@ frappe.ui.form.on("Custom Loan", {
 						input_amount: data.amount,
 						input_date: data.payment_date,
 						loan: frm.doc.name,
+						type: "Deduction Amount",
 						payment_date: formattedDaten
 					},
 					callback: function(me){
@@ -369,54 +370,79 @@ frappe.ui.form.on("Custom Loan", {
 					last_payment_date = first_payment_date4;
 				}
 			} else{
-				last_payment_date = first_payment_date4;
+				last_payment_date = last_payment_date;
 			}
 			frappe.prompt([
 				{fieldname: "amount", label: __("Amount"), fieldtype: "Currency", reqd: 1}
 			  ], function (data) {
-			var loanAmount = frm.doc.loan_amount - frm.doc.total_amount_paid;
-			var monthlyRepaymentAmount = data.amount;
+				var daten = new Date(last_payment_date);
+				var year = daten.getFullYear();
+				var month = daten.getMonth();
+				var day = 1;
+				var formattedDaten = [year, month.toString().padStart(2, '0'), day.toString().padStart(2, '0')].join('-');
 
-			var repaymentSchedule = [];
-			
-			var paymentCounter = 0;
-
-			while (loanAmount > 0) {
-				var payment = {};
-				var dt = new Date(last_payment_date);
-				payment.paymentDate = new Date(dt.getFullYear(), dt.getMonth(), 1);
-				payment.paymentDate.setMonth(payment.paymentDate.getMonth() + paymentCounter);
-				payment.principalAmount = Math.min(loanAmount, monthlyRepaymentAmount);
-				payment.totalPayment = payment.principalAmount;
-				loanAmount -= payment.principalAmount;
-				payment.balanceLoanAmount = loanAmount;
-				repaymentSchedule.push(payment);
-				
-				paymentCounter++;
-			}
-			var loanAmount = frm.doc.loan_amount - frm.doc.total_amount_paid;
-			loanAmount = loanAmount - data.amount;
-			var childTable = frm.doc.repayment_schedule;
-			for (var i = childTable.length - 1; i >= 0; i--) {
-			  if (!childTable[i].is_paid) {
-				frm.doc.repayment_schedule.splice(i, 1);
-			  }
-			}
-				for (const d of repaymentSchedule) {
-					var daten = new Date(d.paymentDate);
-					var year = daten.getFullYear();
-					var month = daten.getMonth() + 1;
-					var day = 1;
-					var formattedDate = [year, month.toString().padStart(2, '0'), day.toString().padStart(2, '0')].join('-');
-				let row = frm.add_child("repayment_schedule", {
-				  payment_date: formattedDate,
-				  principal_amount: d.principalAmount,
-				  total_payment: d.totalPayment,
-				  balance_loan_amount: d.balanceLoanAmount
+				frappe.call({
+					method: "custom_loan.Custom.loan.update_additional_salary",
+					args: {
+						amount: data.amount,
+						ref_name: "",
+						loan_amount: frm.doc.loan_amount,
+						total_amount_paid: frm.doc.total_amount_paid,
+						input_amount: data.amount,
+						input_date: formattedDaten,
+						loan: frm.doc.name,
+						type: "Monthly Deduction Amount",
+						payment_date: formattedDaten
+					},
+					callback: function(me){
+							if (me.message === "pass"){
+								frm.refresh_field("repayment_schedule");
+							}
+					}
 				});
-				}
-				frm.refresh_field("repayment_schedule");
-				frm.save('Update');
+			// var loanAmount = frm.doc.loan_amount - frm.doc.total_amount_paid;
+			// var monthlyRepaymentAmount = data.amount;
+
+			// var repaymentSchedule = [];
+			
+			// var paymentCounter = 0;
+
+			// while (loanAmount > 0) {
+			// 	var payment = {};
+			// 	var dt = new Date(last_payment_date);
+			// 	payment.paymentDate = new Date(dt.getFullYear(), dt.getMonth(), 1);
+			// 	payment.paymentDate.setMonth(payment.paymentDate.getMonth() + paymentCounter);
+			// 	payment.principalAmount = Math.min(loanAmount, monthlyRepaymentAmount);
+			// 	payment.totalPayment = payment.principalAmount;
+			// 	loanAmount -= payment.principalAmount;
+			// 	payment.balanceLoanAmount = loanAmount;
+			// 	repaymentSchedule.push(payment);
+				
+			// 	paymentCounter++;
+			// }
+			// var loanAmount = frm.doc.loan_amount - frm.doc.total_amount_paid;
+			// loanAmount = loanAmount - data.amount;
+			// var childTable = frm.doc.repayment_schedule;
+			// for (var i = childTable.length - 1; i >= 0; i--) {
+			//   if (!childTable[i].is_paid) {
+			// 	frm.doc.repayment_schedule.splice(i, 1);
+			//   }
+			// }
+			// 	for (const d of repaymentSchedule) {
+			// 		var daten = new Date(d.paymentDate);
+			// 		var year = daten.getFullYear();
+			// 		var month = daten.getMonth() + 1;
+			// 		var day = 1;
+			// 		var formattedDate = [year, month.toString().padStart(2, '0'), day.toString().padStart(2, '0')].join('-');
+			// 	let row = frm.add_child("repayment_schedule", {
+			// 	  payment_date: formattedDate,
+			// 	  principal_amount: d.principalAmount,
+			// 	  total_payment: d.totalPayment,
+			// 	  balance_loan_amount: d.balanceLoanAmount
+			// 	});
+			// 	}
+			// 	frm.refresh_field("repayment_schedule");
+			// 	frm.save('Update');
 			}, __("Change Monthly Repayment Amount"), __("Update"));
 		}
 	});	

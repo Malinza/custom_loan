@@ -173,7 +173,7 @@ def do_cancell(doc, method):
                     d.save()
 
 @frappe.whitelist()
-def update_additional_salary(ref_name,amount,loan,payment_date,loan_amount,input_amount,input_date):
+def update_additional_salary(ref_name,amount,loan,payment_date,loan_amount,input_amount,input_date,type):
     from frappe.utils import flt
     from datetime import datetime,timedelta
     from dateutil.relativedelta import relativedelta
@@ -190,15 +190,20 @@ def update_additional_salary(ref_name,amount,loan,payment_date,loan_amount,input
             if d.payment_date < datetime.strptime(payment_date, "%Y-%m-%d").date() and d.is_paid == 0:
                 tot += d.total_payment
 
-        loan_amount = custom_loan.loan_amount - custom_loan.total_amount_paid
-        monthly_repayment_amount = custom_loan.monthly_repayment_amount
-        loan_amount -= flt(input_amount)
-        loan_amount -= flt(tot)
+        if type == "Deduction Amount":
+            loan_amount = custom_loan.loan_amount - custom_loan.total_amount_paid
+            monthly_repayment_amount = custom_loan.monthly_repayment_amount
+            loan_amount -= flt(input_amount)
+            loan_amount -= flt(tot)
+            loan_amounte = custom_loan.loan_amount - custom_loan.total_amount_paid
+            loan_amounte -= flt(tot)
+            if loan_amount < 0:
+                frappe.throw("Amount can not be greater than "+ str(loan_amounte) + " for the chosen date")
+
+        if type == "Monthly Deduction Amount":
+            loan_amount = custom_loan.loan_amount - custom_loan.total_amount_paid
+            monthly_repayment_amount = flt(input_amount)
         
-        loan_amounte = custom_loan.loan_amount - custom_loan.total_amount_paid
-        loan_amounte -= flt(tot)
-        if loan_amount < 0:
-            frappe.throw("Amount can not be greater than "+ str(loan_amounte) + " for the chosen date")
         
         repayment_schedule = []
         payment_counter = 0
@@ -221,57 +226,73 @@ def update_additional_salary(ref_name,amount,loan,payment_date,loan_amount,input
 
         to_remove = []
         to_add = []
-        for d in custom_loan.repayment_schedule:
-            if d.payment_date > datetime.strptime(payment_date, "%Y-%m-%d").date() and d.payment_reference:
-                to_add.append(d)
-            if d.payment_date >= datetime.strptime(payment_date, "%Y-%m-%d").date():
-                to_remove.append(d)
+        if type == "Deduction Amount":
+            for d in custom_loan.repayment_schedule:
+                if d.payment_date > datetime.strptime(payment_date, "%Y-%m-%d").date() and d.payment_reference:
+                    to_add.append(d)
+                if d.payment_date >= datetime.strptime(payment_date, "%Y-%m-%d").date():
+                    to_remove.append(d)
+        elif type == "Monthly Deduction Amount":
+            for d in custom_loan.repayment_schedule:
+                if  d.payment_reference and d.is_paid == 0:
+                    to_add.append(d)
+                if d.is_paid == 0:
+                    to_remove.append(d)
 
         for d in to_remove:
             custom_loan.remove(d)
         for i, d in enumerate(custom_loan.repayment_schedule):
             d.idx = i + 1
 
-        loan_amountt = custom_loan.loan_amount - custom_loan.total_amount_paid
-        loan_amountt -= flt(input_amount)
-        loan_amountt -= flt(tot)
-		
-        # payment_date_str = datetime.strftime(payment_date,"%Y-%m-%d")
-        payment_dt = datetime.strptime(payment_date, "%Y-%m-%d")
-        payment_dt = payment_dt.replace(day=1)
-        if ref_name:
-            doc = frappe.get_doc("Additional Salary", ref_name)
-            doc.cancel()
-            doc.reload()
-            amendment = frappe.copy_doc(doc)
-            amendment.docstatus = 0
-            amendment.amended_from = doc.name
-            amendment.amount = flt(amount) 
-            amendment.save()
-            amendment.submit()
-            if amendment.name:
-                # frappe.msgprint("here" + str(amendment.name))
+        if type == "Deduction Amount":
+            loan_amountt = custom_loan.loan_amount - custom_loan.total_amount_paid
+            loan_amountt -= flt(input_amount)
+            loan_amountt -= flt(tot)
+            
+            # payment_date_str = datetime.strftime(payment_date,"%Y-%m-%d")
+            payment_dt = datetime.strptime(payment_date, "%Y-%m-%d")
+            payment_dt = payment_dt.replace(day=1)
+            if ref_name:
+                ammendment_ref = ""
+                doc = frappe.get_doc("Additional Salary", ref_name)
+                # frappe.throw(str(payment_dt.strftime("%Y-%m-%d")) + " " + str(doc.payroll_date))
+                if flt(amount) == doc.amount and doc.payroll_date.strftime("%Y-%m-%d") == payment_dt.strftime("%Y-%m-%d"):
+                    # frappe.throw("here")
+                    ammendment_ref = ref_name
+                else:
+                    doc.cancel()
+                    doc.reload()
+                    amendment = frappe.copy_doc(doc)
+                    amendment.docstatus = 0
+                    amendment.amended_from = doc.name
+                    amendment.amount = flt(amount) 
+                    amendment.payroll_date = payment_dt.strftime("%Y-%m-%d")
+                    amendment.save()
+                    amendment.submit()
+                    ammendment_ref = amendment.name
+                if ammendment_ref:
+                        # frappe.msgprint("here" + str(amendment.name))
+                    custom_loan.append("repayment_schedule", {
+                        "payment_date": payment_dt.strftime("%Y-%m-%d"),
+                        "principal_amount": 0,
+                        "total_payment": input_amount,
+                        "balance_loan_amount": loan_amountt,
+                        "is_paid": 0,
+                        "outsource": 0,
+                        "payment_reference": ammendment_ref
+
+                        })
+            else:
                 custom_loan.append("repayment_schedule", {
                     "payment_date": payment_dt.strftime("%Y-%m-%d"),
                     "principal_amount": 0,
-                    "total_payment": flt(input_amount),
+                    "total_payment": input_amount,
                     "balance_loan_amount": loan_amountt,
                     "is_paid": 0,
                     "outsource": 0,
-                    "payment_reference": amendment.name
+                    "payment_reference": ""
 
-                })
-        else:
-            custom_loan.append("repayment_schedule", {
-                "payment_date": payment_dt.strftime("%Y-%m-%d"),
-                "principal_amount": 0,
-                "total_payment": flt(input_amount),
-                "balance_loan_amount": loan_amountt,
-                "is_paid": 0,
-                "outsource": 0,
-                "payment_reference": ""
-
-                })
+                    })
 		# custom_loan.save()
 
         # for d in repayment_schedule:
@@ -295,15 +316,41 @@ def update_additional_salary(ref_name,amount,loan,payment_date,loan_amount,input
                     existing_payment = existing_d
                     break
             if existing_payment:
-                frappe.msgprint("here: " + str(existing_payment.payment_reference))
-                custom_loan.append("repayment_schedule", {
-                    "payment_date": payment_datee.strftime("%Y-%m-%d"),
-                    "principal_amount": 0,
-                    "total_payment": d["total_payment"],
-                    "payment_reference": existing_payment.payment_reference,
-                    "balance_loan_amount": d["balance_loan_amount"],
-                    "is_paid": 0
-                })
+                amendment_name = ""
+                doc = frappe.get_doc("Additional Salary", existing_payment.payment_reference)
+                if d["total_payment"] == doc.amount and doc.payroll_date.strftime("%Y-%m-%d") == payment_datee.strftime("%Y-%m-%d"):
+                    # frappe.throw(str(payment_datee.strftime("%Y-%m-%d")) + " " + str(doc.payroll_date))
+                    amendment_name = existing_payment.payment_reference
+                else:
+                    doc.cancel()
+                    doc.reload()
+                    amendment = frappe.copy_doc(doc)
+                    amendment.docstatus = 0
+                    amendment.amended_from = doc.name
+                    amendment.amount = d["total_payment"] 
+                    amendment.payroll_date = payment_datee.strftime("%Y-%m-%d")
+                    amendment.save()
+                    amendment.submit()
+                    amendment_name = amendment.name
+                if amendment_name:
+                    # frappe.msgprint("here: " + str(existing_payment.payment_reference))
+                    custom_loan.append("repayment_schedule", {
+                        "payment_date": payment_datee.strftime("%Y-%m-%d"),
+                        "principal_amount": 0,
+                        "total_payment": d["total_payment"],
+                        "payment_reference": amendment_name,
+                        "balance_loan_amount": d["balance_loan_amount"],
+                        "is_paid": 0
+                    })
+                else: 
+                    custom_loan.append("repayment_schedule", {
+                        "payment_date": payment_datee.strftime("%Y-%m-%d"),
+                        "principal_amount": 0,
+                        "total_payment": d["total_payment"],
+                        "payment_reference": amendment_name,
+                        "balance_loan_amount": d["balance_loan_amount"],
+                        "is_paid": 0
+                    })
             else:
                 custom_loan.append("repayment_schedule", {
                     "payment_date": payment_datee.strftime("%Y-%m-%d"),
@@ -314,6 +361,8 @@ def update_additional_salary(ref_name,amount,loan,payment_date,loan_amount,input
                 })
 		
         custom_loan.save()
+        if custom_loan.save():
+            frappe.msgprint("Loan Schedule Updated")
         return "pass"
     else:
         for d in custom_loan.repayment_schedule:
