@@ -107,11 +107,13 @@ doc_events = {
 		"on_submit": "custom_loan.Custom.loan.on_submit",
 	},
     "Payroll Entry": {
-		"before_submit": "custom_loan.Custom.loan.add_additional_salary",
-        "on_cancel": "custom_loan.Custom.loan.do_cancel",
+		"before_submit": "custom_loan.Custom.loan.add_additional_salary"
 	},
     "Additional Salary": {
 		"before_cancel": "custom_loan.Custom.loan.do_cancell",
+	},
+    "Salary Slip": {
+		"on_submit": "custom_loan.Custom.loan.on_salary_slip_submit",
 	},
 }
 

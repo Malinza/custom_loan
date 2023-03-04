@@ -4,6 +4,7 @@
 
 import json
 import math
+from xml.etree.ElementTree import Element, SubElement, tostring
 
 import frappe
 from frappe import _
@@ -18,7 +19,7 @@ from frappe.utils import (
 	now_datetime,
 	nowdate,
 )
-
+import os
 import erpnext
 from erpnext.accounts.doctype.journal_entry.journal_entry import get_payment_entry
 from erpnext.controllers.accounts_controller import AccountsController
@@ -58,6 +59,7 @@ class CustomLoan(AccountsController):
 
 		self.calculate_totals()
 
+	
 	def validate_accounts(self):
 		for fieldname in [
 			"payment_account",
@@ -396,6 +398,66 @@ def request_loan_closure(loan,loan_amount, total_amount_paid):
 
 	frappe.db.set_value("Custom Loan", loan, "status", "Loan Closure Requested")
 
+@frappe.whitelist(allow_guest=True)
+def send_xml_to_server(data):
+	import datetime
+	import xml.etree.ElementTree as ET
+	import ftplib
+
+	CustomLoan = frappe.get_doc("Custom Loan", data)
+
+	# Create the root element
+	root = ET.Element("Loan")
+
+	# Add repayment schedule data
+	repayment_schedule = ET.SubElement(root, "RepaymentSchedule")
+	for schedule in CustomLoan.repayment_schedule:
+		repayment = ET.SubElement(repayment_schedule, "Repayment")
+		amount = ET.SubElement(repayment, "Amount")
+		amount.text = str(schedule.get('total_payment'))
+		date = ET.SubElement(repayment, "Date")
+		date.text = schedule.get('payment_date').strftime("%Y-%m-%d")
+
+	now = datetime.datetime.now()
+	time_str = now.strftime("%Y%m%d_%H%M%S")
+	# Create the XML tree and write it to a file
+	tree = ET.ElementTree(root)
+	tree.write(f'loan-{time_str}.xml')
+
+	# Connect to the FTP server and upload the file
+	ftp = ftplib.FTP()
+	ftp.connect("rathodtz.com", port=21)
+	ftp.login("u76190068", "Rathod@786")
+	with open(f'loan-{time_str}.xml', "rb") as f:
+		ftp.storbinary(f"STOR loan-{time_str}.xml", f)
+		response = ftp.getwelcome()
+	ftp.quit()
+	frappe.msgprint(response)
+
+@frappe.whitelist(allow_guest=True)
+def create_xml(data):
+	import datetime
+	root = Element('Loan')
+	loan_id = SubElement(root, 'LoanID')
+	loan_id.text = data
+	repayment_schedule = SubElement(root, 'RepaymentSchedule')
+	CustomLoan = frappe.get_doc("Custom Loan", data)
+	for schedule in CustomLoan.repayment_schedule:
+		repayment = SubElement(repayment_schedule, 'Repayment')
+		amount = SubElement(repayment, 'Amount')
+		amount.text = str(schedule.get('total_payment'))
+		date = SubElement(repayment, 'Date')
+		date.text = schedule.get('payment_date').strftime("%Y-%m-%d")
+
+	xml = tostring(root)
+	now = datetime.datetime.now()
+	time_str = now.strftime("%Y%m%d_%H%M%S")
+	filename = os.path.expanduser(f'~/Desktop/dpool/data_{time_str}.xml')
+	with open(filename, 'wb') as f:
+		f.write(xml)
+	
+	frappe.msgprint("XML file created and saved successfully.")
+	return "pass" #{'message': 'XML file created and saved successfully.'}
 
 @frappe.whitelist()
 def get_loan_application(loan_application):

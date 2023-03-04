@@ -130,12 +130,16 @@ class CustomLoanRepayment(Document):
 	def reschedule_repayment_schedule(self):
 		custom_loan = frappe.get_doc("Custom Loan", self.loan)
 		options = []
+		option2 = []
 		for d in custom_loan.repayment_schedule:
 			if d.is_paid == 1:
 				options.append({'value': d.payment_date, 'label': d.payment_date})
+			if d.is_paid == 0:
+				option2.append({'value': d.payment_date, 'label': d.payment_date})
 		if len(options) == 0:
-			last_payment_date = datetime.strptime(self.payment_date, "%Y-%m-%d")
-			last_payment_date = last_payment_date.replace(day=1)
+			last_payment_date = option2[0]['value']
+			# last_payment_date = datetime.strptime(self.payment_date, "%Y-%m-%d")
+			# last_payment_date = last_payment_date.replace(day=1)
 		else:
 			last_payment_date = options[-1]['value']
 			last_payment_date = last_payment_date.replace(day=1)
@@ -151,64 +155,92 @@ class CustomLoanRepayment(Document):
 		monthly_repayment_amount = custom_loan.monthly_repayment_amount
 		loan_amount -= repayment_amount
 
-		repayment_schedule = []
-		payment_counter = 0
+		# frappe.throw("amount: " + str(repayment_amount) + " loan: " + str(self.loan) + " date: " + str(last_payment_date) + " loan_amount: " + str(loan_amount) + " input_amount: " + str(repayment_amount) + " input_date: " + str(last_payment_date) + " type: " + str("Repayment") + " source: " + str(self.name))
+		args = {
+			"amount": repayment_amount,
+			"loan": self.loan,
+			"payment_date": last_payment_date.strftime("%Y-%m-%d"),
+			"loan_amount": loan_amount,
+			"input_amount": repayment_amount,
+			"input_date": last_payment_date.strftime("%Y-%m-%d"),
+			"type": "Repayment",
+			"source": self.name
+		}
+		# frappe.throw("args: " + str(args))
+		response = frappe.call(
+    		"custom_loan.Custom.loan.update_additional_salary",
+			amount=repayment_amount,
+			loan=self.loan,
+			payment_date=last_payment_date.strftime("%Y-%m-%d"),
+			loan_amount=loan_amount,
+			input_amount=repayment_amount,
+			input_date=last_payment_date.strftime("%Y-%m-%d"),
+			type="Repayment",
+			source=self.name
+		)
 
-		while loan_amount > 0:
-			payment = {}
-			payment_date = last_payment_date
-			payment["payment_date"] = payment_date.replace(day=1)
-			payment["payment_date"] = payment["payment_date"] + relativedelta(months=1 * payment_counter)
-			payment["principal_amount"] = min(loan_amount, monthly_repayment_amount)
-			payment["total_payment"] = payment["principal_amount"]
-			loan_amount -= payment["principal_amount"]
-			payment["balance_loan_amount"] = loan_amount
-			repayment_schedule.append(payment)
+		if response == "pass":
+			frappe.msgprint("Repayment schedule refreshed")
 
-			payment_counter += 1
+		# repayment_schedule = []
+		# payment_counter = 0
 
-		to_remove = []
-		for d in custom_loan.repayment_schedule:
-			if d.is_paid == 0:
-				to_remove.append(d)
-		for d in to_remove:
-			custom_loan.remove(d)
-		for i, d in enumerate(custom_loan.repayment_schedule):
-			d.idx = i + 1
+		# while loan_amount > 0:
+		# 	payment = {}
+		# 	payment_date = last_payment_date
+		# 	payment["payment_date"] = payment_date.replace(day=1)
+		# 	payment["payment_date"] = payment["payment_date"] + relativedelta(months=1 * payment_counter)
+		# 	payment["principal_amount"] = min(loan_amount, monthly_repayment_amount)
+		# 	payment["total_payment"] = payment["principal_amount"]
+		# 	loan_amount -= payment["principal_amount"]
+		# 	payment["balance_loan_amount"] = loan_amount
+		# 	repayment_schedule.append(payment)
 
+		# 	payment_counter += 1
+
+		# to_remove = []
+		# to_add = []
 		# for d in custom_loan.repayment_schedule:
-		# 	if not d.is_paid:
-		# 		custom_loan.repayment_schedule.remove(d)
-		loan_amountt = custom_loan.loan_amount - custom_loan.total_amount_paid
-		loan_amountt -= repayment_amount
-		
-		# custom_loan.repayment_schedule = []
-		payment_dt = last_payment_date
-		payment_dt = payment_dt.replace(day=1)
-		custom_loan.append("repayment_schedule", {
-			"payment_date": payment_dt.strftime("%Y-%m-%d"),
-			"principal_amount": 0,
-			"total_payment": repayment_amount,
-			"balance_loan_amount": loan_amountt,
-			"is_paid": 1,
-			"outsource": 1,
-			"repayment_reference": self.name
+		# 	if d.is_paid == 0:
+		# 		to_remove.append(d)
+		# for d in to_remove:
+		# 	custom_loan.remove(d)
+		# for i, d in enumerate(custom_loan.repayment_schedule):
+		# 	d.idx = i + 1
 
-		})
+		# # for d in custom_loan.repayment_schedule:
+		# # 	if not d.is_paid:
+		# # 		custom_loan.repayment_schedule.remove(d)
+		# loan_amountt = custom_loan.loan_amount - custom_loan.total_amount_paid
+		# loan_amountt -= repayment_amount
+		
+		# # custom_loan.repayment_schedule = []
+		# payment_dt = last_payment_date
+		# payment_dt = payment_dt.replace(day=1)
+		# custom_loan.append("repayment_schedule", {
+		# 	"payment_date": payment_dt.strftime("%Y-%m-%d"),
+		# 	"principal_amount": 0,
+		# 	"total_payment": repayment_amount,
+		# 	"balance_loan_amount": loan_amountt,
+		# 	"is_paid": 1,
+		# 	"outsource": 1,
+		# 	"repayment_reference": self.name
+
+		# })
+		# # custom_loan.save()
+
+		# for d in repayment_schedule:
+		# 	payment_date = d["payment_date"]
+		# 	payment_datee = payment_date.replace(day=1)
+		# 	custom_loan.append("repayment_schedule", {
+		# 		"payment_date": payment_datee.strftime("%Y-%m-%d"),
+		# 		"principal_amount": 0,
+		# 		"total_payment": d["total_payment"],
+		# 		"balance_loan_amount": d["balance_loan_amount"],
+		# 		"is_paid": 0
+		# 	})
+		
 		# custom_loan.save()
-
-		for d in repayment_schedule:
-			payment_date = d["payment_date"]
-			payment_datee = payment_date.replace(day=1)
-			custom_loan.append("repayment_schedule", {
-				"payment_date": payment_datee.strftime("%Y-%m-%d"),
-				"principal_amount": 0,
-				"total_payment": d["total_payment"],
-				"balance_loan_amount": d["balance_loan_amount"],
-				"is_paid": 0
-			})
-		
-		custom_loan.save()
 
 	def cancel_reschedule_repayment_schedule(self):
 		custom_loan = frappe.get_doc("Custom Loan", self.loan)

@@ -83,106 +83,32 @@ frappe.ui.form.on("Custom Loan", {
 					{fieldname: "payment_date", label: __("Date which is not to deduct"), fieldtype: "Select", options: options, reqd: 1},
 				  ], function (data) {
 
-					if(options2[0].value > 1){
-						var amount = options2[0].value;
-					}else{
-						var amount = options4[0].value;
-					}
+					var daten = new Date(data.payment_date);
+				var year = daten.getFullYear();
+				var month = daten.getMonth() + 1;
+				var day = 1;
+				var formattedDaten = [year, month.toString().padStart(2, '0'), day.toString().padStart(2, '0')].join('-');
 
-					let totalAmount = 0;
-					for (let i = 0; i < options5.length; i++) {
-					if (options5[i].date < data.payment_date) {
-						totalAmount += options5[i].amount;
-					}
-					}
-					console.log("Total amount:", totalAmount);
-
-					var loanAmount = frm.doc.loan_amount - frm.doc.total_amount_paid;
-				var monthlyRepaymentAmount = amount;
-	
-				var repaymentSchedule = [];
-				
-				var paymentCounter = 0;
-				loanAmount -= totalAmount;
-	
-				while (loanAmount > 0) {
-					var payment = {};
-					var dt = new Date(data.payment_date);
-					var nextMonth = new Date();
-					payment.paymentDate = new Date(dt.getFullYear(), dt.getMonth(), 1);
-					nextMonth.setMonth(dt.getMonth() + 1);
-					payment.paymentDate.setMonth(nextMonth.getMonth() + paymentCounter);
-					payment.principalAmount = Math.min(loanAmount, monthlyRepaymentAmount);
-					payment.totalPayment = payment.principalAmount;
-					loanAmount -= payment.principalAmount;
-					payment.balanceLoanAmount = loanAmount;
-					repaymentSchedule.push(payment);
-					
-					paymentCounter++;
-				}
-				var childTable = frm.doc.repayment_schedule;
-				var daten = new Date(data.payment_date);
-					var year = daten.getFullYear();
-					var month = daten.getMonth() + 1;
-					var day = 1;
-					var formattedDaten = [year, month.toString().padStart(2, '0'), day.toString().padStart(2, '0')].join('-');
-				for (var i = childTable.length - 1; i >= 0; i--) {
-					if (!childTable[i].is_paid && childTable[i].payment_date > formattedDaten) {
-						frm.doc.repayment_schedule.splice(i, 1);
-					  }
-					  
-				}
-				var childTable = frm.doc.repayment_schedule;
-				for (var i = childTable.length - 1; i >= 0; i--) {
-					
-				if (childTable[i].payment_date === formattedDaten && !childTable[i].outsource && !childTable[i].repayment_reference) {
-					if (childTable[i].payment_reference){
-					frappe.call({
-						method: "custom_loan.Custom.loan.update_additional_salary",
-						args: {
-							amount: 0,
-							ref_name: childTable[i].payment_reference,
-							loan: frm.doc.name
-						},
-					});
-					frm.doc.repayment_schedule.splice(i, 1);
-				}else {
-					frm.doc.repayment_schedule.splice(i, 1);
-				}
-				  }  
-				}
-					for (const d of repaymentSchedule) {
-						var daten = new Date(d.paymentDate);
-						var year = daten.getFullYear();
-						var month = daten.getMonth() + 1;
-						var childTable = frm.doc.repayment_schedule;
-						for (var i = childTable.length - 1; i >= 0; i--) {
-							if (childTable[i].payment_date === d.paymentDate && childTable[i].total_payment === 0) {
-								childTable[i].balance_loan_amount = d.balanceLoanAmount;
-								month += 1;
-								if (month > 12) {
-								month = 1;
-								year += 1;
-								}
+				frappe.call({
+					method: "custom_loan.Custom.loan.update_additional_salary",
+					args: {
+						amount: 0,
+						loan_amount: frm.doc.loan_amount,
+						source: frm.doc.name,
+						input_amount: frm.doc.total_amount_paid,
+						input_date: data.payment_date,
+						loan: frm.doc.name,
+						type: "Dont Deduct This Month",
+						payment_date: formattedDaten
+					},
+					callback: function(me){
+							if (me.message === "pass"){
+								frm.refresh_field("repayment_schedule");
 							}
-						}
-								var day = 1;
-								var formattedDate = [year, month.toString().padStart(2, '0'), day.toString().padStart(2, '0')].join('-');
-								let row = frm.add_child("repayment_schedule", {
-									payment_date: formattedDate,
-									principal_amount: d.principalAmount,
-									total_payment: d.totalPayment,
-									balance_loan_amount: d.balanceLoanAmount
-									});
-								}
-					frm.refresh_field("repayment_schedule");
-					frm.save('Update');
+					}
+				});
 				}, __("Choose a Certain Period not to deduct"), __("Update"));	
-				// frm.trigger("update_additional_salary");	
 	},
-	// update_additional_salary: (frm) => {
-		
-	// },
 	deduct_amount: (frm) => {
 		frappe.call({
 			method: "frappe.client.get",
@@ -211,9 +137,9 @@ frappe.ui.form.on("Custom Loan", {
 					method: "custom_loan.Custom.loan.update_additional_salary",
 					args: {
 						amount: data.amount,
-						ref_name: "",
+
 						loan_amount: frm.doc.loan_amount,
-						total_amount_paid: frm.doc.total_amount_paid,
+						source: frm.doc.name,
 						input_amount: data.amount,
 						input_date: data.payment_date,
 						loan: frm.doc.name,
@@ -226,9 +152,6 @@ frappe.ui.form.on("Custom Loan", {
 							}
 					}
 				});
-			
-				// frm.save('Update');
-				// frm.refresh_field("repayment_schedule");
 			}, __("Change Deduction Amount for a Chosen Period"), __("Update"));
 		}
 	});
@@ -274,68 +197,39 @@ frappe.ui.form.on("Custom Loan", {
 		frappe.prompt([
 			{fieldname: "setDate", label: __("Next Payment Start Date"), fieldtype: "Date", reqd: 1},
 		  ], function (data) {
-			var dt = new Date(data.setDate);
-			var st = new Date(dt.getFullYear(), dt.getMonth(), 1);
-			var le = new Date(last_payment_date);
-			var dst = new Date(le.getFullYear(), le.getMonth(), 1);
-
-			var daten = new Date(st);
+			var daten = new Date(data.setDate);
 			var year = daten.getFullYear();
-			var month = daten.getMonth() + 1;
+			var month = daten.getMonth();
 			var day = 1;
 			var forma = [year, month.toString().padStart(2, '0'), day.toString().padStart(2, '0')].join('-');
 
-			var daten = new Date(dst);
+			var daten = new Date(last_payment_date);
 			var year = daten.getFullYear();
-			var month = daten.getMonth() + 1;
+			var month = daten.getMonth();
 			var day = 1;
 			var fo = [year, month.toString().padStart(2, '0'), day.toString().padStart(2, '0')].join('-');
 
 			if (forma <= fo) {
 				frappe.throw(__("Next Payment Start Date should be greater than deducted date of {0}", [last_payment_date]));
 			}
-			var setDate = data.setDate;
-			var loanAmount = frm.doc.loan_amount - frm.doc.total_amount_paid;
-			var monthlyRepaymentAmount = last_payment;
-
-			var repaymentSchedule = [];
-			
-			var paymentCounter = 0;
-
-			while (loanAmount > 0) {
-				var payment = {};
-				var dt = new Date(setDate);
-				payment.paymentDate = new Date(dt.getFullYear(), dt.getMonth(), 1);
-				payment.paymentDate.setMonth(payment.paymentDate.getMonth() + paymentCounter);
-				payment.principalAmount = Math.min(loanAmount, monthlyRepaymentAmount);
-				payment.totalPayment = payment.principalAmount;
-				loanAmount -= payment.principalAmount;
-				payment.balanceLoanAmount = loanAmount;
-				repaymentSchedule.push(payment);
-				
-				paymentCounter++;
-			}
-			var childTable = frm.doc.repayment_schedule;
-			for (var i = childTable.length - 1; i >= 0; i--) {
-			  if (!childTable[i].is_paid) {
-				frm.doc.repayment_schedule.splice(i, 1);
-			  }
-			}
-				for (const d of repaymentSchedule) {
-					var daten = new Date(d.paymentDate);
-					var year = daten.getFullYear();
-					var month = daten.getMonth() + 1;
-					var day = 1;
-					var formattedDate = [year, month.toString().padStart(2, '0'), day.toString().padStart(2, '0')].join('-');
-				let row = frm.add_child("repayment_schedule", {
-				  payment_date: formattedDate,
-				  principal_amount: d.principalAmount,
-				  total_payment: d.totalPayment,
-				  balance_loan_amount: d.balanceLoanAmount
-				});
+			frappe.call({
+				method: "custom_loan.Custom.loan.update_additional_salary",
+				args: {
+					amount: last_payment,
+					loan_amount: frm.doc.loan_amount,
+					source: frm.doc.name,
+					input_amount: last_payment,
+					input_date: data.setDate,
+					loan: frm.doc.name,
+					type: "Deduction Till",
+					payment_date: forma
+				},
+				callback: function(me){
+						if (me.message === "pass"){
+							frm.refresh_field("repayment_schedule");
+						}
 				}
-				frm.refresh_field("repayment_schedule");
-				frm.save('Update');
+			});
 			}, __("Set Date for Next Deduction to Start"), __("Update"));
 		}
 	});
@@ -354,7 +248,7 @@ frappe.ui.form.on("Custom Loan", {
 					if(d.is_paid === 0 && d.total_payment > 0) {
 						options.push({value: d.payment_date, label: d.payment_date});
 					}
-					if(d.is_paid === 0 && d.total_payment === 0) {
+					if(d.is_paid === 1 && d.total_payment > 0) {
 						options2.push({value: d.payment_date, label: d.payment_date});
 					}
 				});
@@ -370,7 +264,7 @@ frappe.ui.form.on("Custom Loan", {
 					last_payment_date = first_payment_date4;
 				}
 			} else{
-				last_payment_date = last_payment_date;
+				last_payment_date = first_payment_date4;
 			}
 			frappe.prompt([
 				{fieldname: "amount", label: __("Amount"), fieldtype: "Currency", reqd: 1}
@@ -385,9 +279,9 @@ frappe.ui.form.on("Custom Loan", {
 					method: "custom_loan.Custom.loan.update_additional_salary",
 					args: {
 						amount: data.amount,
-						ref_name: "",
+
 						loan_amount: frm.doc.loan_amount,
-						total_amount_paid: frm.doc.total_amount_paid,
+						source: frm.doc.name,
 						input_amount: data.amount,
 						input_date: formattedDaten,
 						loan: frm.doc.name,
@@ -400,49 +294,6 @@ frappe.ui.form.on("Custom Loan", {
 							}
 					}
 				});
-			// var loanAmount = frm.doc.loan_amount - frm.doc.total_amount_paid;
-			// var monthlyRepaymentAmount = data.amount;
-
-			// var repaymentSchedule = [];
-			
-			// var paymentCounter = 0;
-
-			// while (loanAmount > 0) {
-			// 	var payment = {};
-			// 	var dt = new Date(last_payment_date);
-			// 	payment.paymentDate = new Date(dt.getFullYear(), dt.getMonth(), 1);
-			// 	payment.paymentDate.setMonth(payment.paymentDate.getMonth() + paymentCounter);
-			// 	payment.principalAmount = Math.min(loanAmount, monthlyRepaymentAmount);
-			// 	payment.totalPayment = payment.principalAmount;
-			// 	loanAmount -= payment.principalAmount;
-			// 	payment.balanceLoanAmount = loanAmount;
-			// 	repaymentSchedule.push(payment);
-				
-			// 	paymentCounter++;
-			// }
-			// var loanAmount = frm.doc.loan_amount - frm.doc.total_amount_paid;
-			// loanAmount = loanAmount - data.amount;
-			// var childTable = frm.doc.repayment_schedule;
-			// for (var i = childTable.length - 1; i >= 0; i--) {
-			//   if (!childTable[i].is_paid) {
-			// 	frm.doc.repayment_schedule.splice(i, 1);
-			//   }
-			// }
-			// 	for (const d of repaymentSchedule) {
-			// 		var daten = new Date(d.paymentDate);
-			// 		var year = daten.getFullYear();
-			// 		var month = daten.getMonth() + 1;
-			// 		var day = 1;
-			// 		var formattedDate = [year, month.toString().padStart(2, '0'), day.toString().padStart(2, '0')].join('-');
-			// 	let row = frm.add_child("repayment_schedule", {
-			// 	  payment_date: formattedDate,
-			// 	  principal_amount: d.principalAmount,
-			// 	  total_payment: d.totalPayment,
-			// 	  balance_loan_amount: d.balanceLoanAmount
-			// 	});
-			// 	}
-			// 	frm.refresh_field("repayment_schedule");
-			// 	frm.save('Update');
 			}, __("Change Monthly Repayment Amount"), __("Update"));
 		}
 	});	
@@ -472,11 +323,32 @@ frappe.ui.form.on("Custom Loan", {
 		}
 
 		if (frm.doc.docstatus == 1) {
-			if (["Disbursed", "Partially Disbursed"].includes(frm.doc.status) && (!frm.doc.repay_from_salary)) {
-				frm.add_custom_button(__('Request Loan Closure'), function() {
-					frm.trigger("request_loan_closure");
-				},__('Status'));
-			}
+			frm.add_custom_button(__('Export to XML'), function() {
+				
+				frappe.call({
+					method: 'custom_loan.custom_loan.doctype.custom_loan.custom_loan.create_xml',
+					args: {
+						data: frm.doc.name
+					},
+					callback: function(response) {
+						console.log(response.message);
+					}
+				});
+
+			});
+			frm.add_custom_button(__('Export to XML to DB'), function() {
+				
+				frappe.call({
+					method: 'custom_loan.custom_loan.doctype.custom_loan.custom_loan.send_xml_to_server',
+					args: {
+						data: frm.doc.name
+					},
+					callback: function(response) {
+						console.log(response.message);
+					}
+				});
+
+			});
 
 			if (["Sanctioned", "Partially Disbursed"].includes(frm.doc.status)) {
 				frm.add_custom_button(__('Loan Disbursement Journal Entry'), function() {

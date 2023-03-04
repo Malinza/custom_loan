@@ -22,7 +22,7 @@ frappe.ui.form.on('Custom Loan Repayment', {
 			return {
 				filters: {
 					'company': frm.doc.company,
-					'root_type': 'Expense',
+					'root_type': 'Asset',
 					'is_group': 0
 				}
 			}
